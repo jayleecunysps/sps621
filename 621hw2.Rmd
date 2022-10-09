@@ -47,12 +47,12 @@ Github would be a good way to share the code.
 
 We decided to use two different way for problem solving after few conversations, that is why we create 2 data set named classification and data.
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 # load data
 
 classificationraw <- "https://raw.githubusercontent.com/jayleecunysps/sps621/main/classification-output-data.csv"
-classification <-read.csv(classificationraw)
-data<- classification[,c(9:11)]
+classification <-read.csv(classificationraw) #data1
+data<- classification[,c(9:11)] #data2
 table <- table(data$scored.class, data$class)
 
 ```
@@ -63,12 +63,13 @@ scored.class: the predicted class for the observation (based on a threshold of 0
 
 The rows represent the predicted class, and the columns represent the actual class.
 
-119 is the amount of True Positives. 30 is the amount of False Negatives. 5 is the number of False Positives. 27 is the amount of True Negatives.
+119 is the amount of True Negatives. 30 is the amount of False Negatives. 5 is the number of False Positives. 27 is the amount of True Positives.
 
 
-```{r}
+```{r echo=FALSE}
 q2 <- table("predicted class" = classification$scored.class, "actual class" = classification$class)
 q2
+
 ```
 From question 3 to question 6, we would like to read the actual column from the raw data and assign it into Classified condition like TP, TN, FP and FN for the use of creating function.
 
@@ -95,7 +96,11 @@ q3 <- function(a){
   FN <- sum(a$class == 1 & a$scored.class == 0)
   (TP+TN)/(TP+FP+FN+TN)
 }
+```
 
+Calculate Accuracy:
+
+```{r echo=FALSE}
 q3(classification)
 ```
 ## Part 4
@@ -115,7 +120,10 @@ q4 <- function(a){
   FN <- sum(a$class == 1 & a$scored.class == 0)
   (FP+FN)/(TP+FP+FN+TN)
 }
+```
 
+Calculate classification error rate:
+```{r echo=FALSE}
 q4(classification)
 ```
 
@@ -136,7 +144,11 @@ q5 <- function(a){
   FN <- sum(a$class == 1 & a$scored.class == 0)
   TP/(TP+FP)
 }
+```
 
+Calculate Precision:
+
+```{r echo=FALSE}
 q5(classification)
 ```
 ## Part 6
@@ -156,7 +168,10 @@ q6 <- function(a){
   FN <- sum(a$class == 1 & a$scored.class == 0)
   TP/(TP+FN)
 }
+```
 
+Calculate Sensitivity:
+```{r echo=FALSE}
 q6(classification)
 ```
 
@@ -183,7 +198,7 @@ specificity_func <- function(table) {
 
 Calculate specificity.
 
-```{r}
+```{r echo=FALSE}
 specificity_func(table)
 ```
 Our model has a specificity of 0.84375.
@@ -209,7 +224,7 @@ f_one_func <- function(table) {
 ```
 
 Calculate F1.
-```{r}
+```{r echo=FALSE}
 f_one_func(table)
 ```
 Our model has an f1 of 0.8717949.
@@ -231,7 +246,8 @@ Write a function that generates an ROC curve from a dataset with a true classifi
 Your function should return a list that includes the plot of ROC curve and a vector that contains the area under the curve.
 
 We need to get the value of ture and false positive rate, spaces between tpr abd fpr and area under the ROC Curve to get AUC.
-We get the spaces between TPR (or FPR) by using diff. We also need to add up the area which named AUC1 and AUC2
+We get the spaces between TPR (or FPR) by using diff. We also need to add up the area which named AUC1 and AUC2.
+
 
 ```{r}
 roc_curve_func <- function(class, probability_score){
@@ -256,7 +272,7 @@ roc_curve_func <- function(class, probability_score){
 }
 ```
 
-```{r}
+```{r echo=FALSE}
 roc_curve_func(classification$class, classification$scored.probability)
 ```
 
@@ -268,7 +284,7 @@ classification metrics discussed above.
 
 We combine all the function that we have create into one.
 
-```{r}
+```{r echo=FALSE}
 allmetrics <- c(q3(data), q4(data), q5(data),q6(data), specificity_func(table), f_one_func(table))
 names(allmetrics) <- c("Accuracy", "Classification Error Rate", "Precision", "Sensitivity", "Specificity", "F1-Score")
 allmetrics
@@ -282,7 +298,7 @@ specificity. Apply the functions to the data set. How do the results compare wit
 
 We can see the result are the same which means the function we created is working.
 
-```{r}
+```{r echo=FALSE}
 confusionMatrix(as.factor(classification$scored.class), as.factor(classification$class), positive = "1")
 ```
 
@@ -293,7 +309,7 @@ compare with your own functions?
 
 you can see the line and AUC are the same.
 
-```{r}
+```{r echo=FALSE}
 library(pROC)
 rocCurve <- roc(classification$class, classification$scored.probability)
 plot(rocCurve,print.auc = TRUE)
