@@ -1,0 +1,304 @@
+---
+title: "hw2 621"
+author: "Jay Lee and Tyler Baker"
+date: "10/7/2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+# load libary
+library(reshape)
+library(mice)
+library(naniar)
+library(readr)
+library(dplyr)
+library(knitr)
+library(tidyr)
+library(stringr)
+library(extraoperators)
+library(psych)
+library(ggplot2)
+library(caret)
+
+```
+
+## Overview
+
+In this homework assignment, you will work through various classification metrics. You will be asked to create
+functions in R to carry out the various calculations. You will also investigate some functions in packages that will let
+you obtain the equivalent results. Finally, you will create graphical output that also can be used to evaluate the
+output of classification models, such as binary logistic regression.
+
+## Assignment Preparation:
+
+
+For this assignment, the data which is in csv format is available on blackboard. We both decided to upload the data to github to fit the goal of this assignment.
+
+This assignment wants us to create R functions and the other packages to generate the classification metrics for the provided data set.
+
+It would be great if other classmate can weight in or discuss like a brainstorm section afterward to have new ideas. 
+
+Github would be a good way to share the code.
+
+## Part 1
+
+We decided to use two different way for problem solving after few conversations, that is why we create 2 data set named classification and data.
+
+```{r echo=FALSE}
+# load data
+
+classificationraw <- "https://raw.githubusercontent.com/jayleecunysps/sps621/main/classification-output-data.csv"
+classification <-read.csv(classificationraw)
+data<- classification[,c(9:11)]
+table <- table(data$scored.class, data$class)
+
+```
+
+## Part 2
+class: the actual class for the observation
+scored.class: the predicted class for the observation (based on a threshold of 0.5)
+
+The rows represent the predicted class, and the columns represent the actual class.
+
+119 is the amount of True Positives. 30 is the amount of False Negatives. 5 is the number of False Positives. 27 is the amount of True Negatives.
+
+
+```{r}
+q2 <- table("predicted class" = classification$scored.class, "actual class" = classification$class)
+q2
+```
+From question 3 to question 6, we would like to read the actual column from the raw data and assign it into Classified condition like TP, TN, FP and FN for the use of creating function.
+
+Classified condition:
+True Positive (TP)
+True Negative (TN)
+False Positive (FP)
+False Negative (FN)
+
+## Part 3
+
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the accuracy of the predictions.
+
+For question 3, we would like to know the value of Accuracy which is the proportion of correctly classified observations.
+Accuracy = (TP+TN)/(TP+FP+FN+TN)
+
+```{r}
+
+q3 <- function(a){
+  TP <- sum(a$class == 1 & a$scored.class == 1)
+  TN <- sum(a$class == 0 & a$scored.class == 0)
+  FP <- sum(a$class == 0 & a$scored.class == 1)
+  FN <- sum(a$class == 1 & a$scored.class == 0)
+  (TP+TN)/(TP+FP+FN+TN)
+}
+
+q3(classification)
+```
+## Part 4
+
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the classification error rate of the predictions.
+
+For question 4, we would like to know the value of Classification error rate which is the proportion of instances misclassified over the whole set of instances.
+
+classification error rate = (FP+FN)/(TP+FP+FN+TN)
+
+```{r}
+q4 <- function(a){
+  TP <- sum(a$class == 1 & a$scored.class == 1)
+  TN <- sum(a$class == 0 & a$scored.class == 0)
+  FP <- sum(a$class == 0 & a$scored.class == 1)
+  FN <- sum(a$class == 1 & a$scored.class == 0)
+  (FP+FN)/(TP+FP+FN+TN)
+}
+
+q4(classification)
+```
+
+## Part 5
+
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the precision of the predictions.
+
+For question 5, we would like to know the value of Precision which is how close measurements of the same item are to each other.
+
+Precision = TP/(TP+FP)
+
+```{r}
+q5 <- function(a){
+  TP <- sum(a$class == 1 & a$scored.class == 1)
+  TN <- sum(a$class == 0 & a$scored.class == 0)
+  FP <- sum(a$class == 0 & a$scored.class == 1)
+  FN <- sum(a$class == 1 & a$scored.class == 0)
+  TP/(TP+FP)
+}
+
+q5(classification)
+```
+## Part 6
+
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the sensitivity of the predictions. Sensitivity is also known as recall.
+
+For question 6, we would like to know the value of Sensitivity which is probability of a positive test, conditioned on truly being positive.
+
+Sensitivity = TP/(TP+FN)
+
+```{r}
+q6 <- function(a){
+  TP <- sum(a$class == 1 & a$scored.class == 1)
+  TN <- sum(a$class == 0 & a$scored.class == 0)
+  FP <- sum(a$class == 0 & a$scored.class == 1)
+  FN <- sum(a$class == 1 & a$scored.class == 0)
+  TP/(TP+FN)
+}
+
+q6(classification)
+```
+
+## Start from Part 7, we are trying to create function by using the table we created back to part 1.
+
+## Part 7
+Write a function that takes the dataset as a dataframe, with actual and predicted classifications identified, and returns the specificity of the predictions.
+
+Note. 
+
+Specificity = (True Negatives)/(True Negatives + False Positives)
+
+```{r}
+specificity_func <- function(table) {
+  true_positives <- table[2,2]
+  false_negatives <- table[1,2]
+  false_positives <- table[2,1]
+  true_negatives <- table[1,1]
+  
+  specificity <- (true_negatives)/(true_negatives + false_positives)
+  return(specificity)
+}
+```
+
+Calculate specificity.
+
+```{r}
+specificity_func(table)
+```
+Our model has a specificity of 0.84375.
+
+## Part 8
+Write a function that takes the dataset as a dataframe, with actual and predicted classifications identified, and returns the F1 score.
+
+Note. F1 = (2 x Precision x Sensitivity)/(Precision + Sensitivity)
+```{r}
+f_one_func <- function(table) {
+  true_positives <- table[2,2]
+  false_negatives <- table[1,2]
+  false_positives <- table[2,1]
+  true_negatives <- table[1,1]
+  
+  sensitivity <- true_positives/(true_positives + false_negatives)
+  
+  precision <- true_positives/(true_positives + false_positives)
+  
+  f_one <- (2 * precision * sensitivity)/(precision + sensitivity)
+  return(f_one)
+}
+```
+
+Calculate F1.
+```{r}
+f_one_func(table)
+```
+Our model has an f1 of 0.8717949.
+
+## Part 9
+Before we move on, let's consider the bounds of F1.
+
+Well, to begin we must note that the F1 score uses the model's sensitivity score and the model's precision score. 
+Let's first examine the precision score. 
+$Precision=(True Positives)/(True Positives + False Positives)$
+We cannot have a negative amount of false positives. Thus, our denomenator will either be equal to the amount of true positives(the case where we have 0 false positives), or our denomenator will be larger than the numerator. Therefore, this number will be bound between [0,1].
+Now let's examine the sensitivity score.
+$Sensitivity = (True Positives)/(True Positives + False Negatives)$
+Similarly, the denomenator will either be equal to the numerator, or it will be larger than the numerator. Therefore, this number is also bound between [0,1].
+Finally, since we are essentially just multiplying by fractions less than 1, our F1 will also be bound between [0,1].
+
+## Part 10
+Write a function that generates an ROC curve from a dataset with a true classification column and a probability column.
+Your function should return a list that includes the plot of ROC curve and a vector that contains the area under the curve.
+
+We need to get the value of ture and false positive rate, spaces between tpr abd fpr and area under the ROC Curve to get AUC.
+We get the spaces between TPR (or FPR) by using diff. We also need to add up the area which named AUC1 and AUC2
+
+```{r}
+roc_curve_func <- function(class, probability_score){
+  class <- class[order(probability_score, decreasing = TRUE)]
+  tpr <- cumsum(class) / sum(class)
+  fpr <- cumsum(!class) / sum(!class)
+  classplusscore <- data.frame(tpr, fpr, class)
+  tpr_2 <- c(diff(classplusscore$tpr), 0) #spaces between tpr
+  fpr_2 <- c(diff(classplusscore$fpr), 0) #spaces between fpr
+  AUC1 <- classplusscore$tpr*fpr_2 #Adding up the area
+  AUC2 <- tpr_2*fpr_2 #Adding up the area
+  AUC <- sum(AUC1)+sum(AUC2)/2 
+  
+  plot(classplusscore$fpr, classplusscore$tpr, type = "l",
+       main = "ROC Curve",
+       xlab = "FPR",
+       ylab = "TPR")
+  grid()
+  abline(a = 0, b = 1,col = "red")
+  lines(fpr, tpr, type='b', lwd=3, col="blue")
+  text(0.7, 0.3, sprintf("AUC = %0.4f", AUC))
+}
+```
+
+```{r}
+roc_curve_func(classification$class, classification$scored.probability)
+```
+
+
+##Part 11
+
+Use your created R functions and the provided classification output data set to produce all of the
+classification metrics discussed above.
+
+We combine all the function that we have create into one.
+
+```{r}
+allmetrics <- c(q3(data), q4(data), q5(data),q6(data), specificity_func(table), f_one_func(table))
+names(allmetrics) <- c("Accuracy", "Classification Error Rate", "Precision", "Sensitivity", "Specificity", "F1-Score")
+allmetrics
+```
+
+
+#Part 12
+
+Investigate the caret package. In particular, consider the functions confusionMatrix, sensitivity, and
+specificity. Apply the functions to the data set. How do the results compare with your own functions?
+
+We can see the result are the same which means the function we created is working.
+
+```{r}
+confusionMatrix(as.factor(classification$scored.class), as.factor(classification$class), positive = "1")
+```
+
+##Part13
+
+Investigate the pROC package. Use it to generate an ROC curve for the data set. How do the results
+compare with your own functions?
+
+you can see the line and AUC are the same.
+
+```{r}
+library(pROC)
+rocCurve <- roc(classification$class, classification$scored.probability)
+plot(rocCurve,print.auc = TRUE)
+
+roc_curve_func(classification$class, classification$scored.probability)
+```
+
+
