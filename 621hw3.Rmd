@@ -1,0 +1,389 @@
+---
+title: "DATA 621 Homework 3"
+author: "Jay Lee and Tyler Baker"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+# load libary
+library(reshape)
+library(car)
+library(mice)
+library(naniar)
+library(readr)
+library(dplyr)
+library(knitr)
+library(tidyr)
+library(stringr)
+library(extraoperators)
+library(palmerpenguins)
+library(psych)
+library(ggplot2)
+library(tidyverse)
+library(pscl)
+
+```
+
+
+## Overview
+
+In this homework assignment, we will explore, analyze and model a data set containing information on crime
+for various neighborhoods of a major city. Each record has a response variable indicating whether or not the crime
+rate is above the median crime rate (1) or not (0).
+Our objective is to build a binary logistic regression model on the training data set to predict whether the
+neighborhood will be at risk for high crime levels. we will provide classifications and probabilities for the
+evaluation data set using your binary logistic regression model. we can only use the variables given to us (or
+variables that we derive from the variables provided). 
+
+
+## Assignment Preparation:
+
+For this assignment, the data which is in csv format is available on blackboard. I have couple questions need to think about it before starting the project like HW1. These questions give me the direction.
+
+-Who is my audience for this time?
+-Will anyone audit the report?
+-What is the visual planning process?
+-Is the data contain sensitive information?
+-Do we have data definition specification?
+
+we decided to upload both crime evaluation data and training data to GitHub so that audience or auditor can access while looking at our report since the data has no sensitive info. This allow audience to review, explore and exchange ideas to myself or other party in the future instead of just reading it. Also, we both agree that it is easier to get people understanding the result if we include visual presentation. 
+
+## Table Creation
+
+First of all, we are loading both csv file into R studio. It is very important to review and study the data beforehand instead of just loading it. Understanding the data is the foundation of any reports. It is very difficult to provide useful insight if you do not even understand how the data works. We often need another professional to explain the data when it is needed. In fact, good data set is not easy to find, so checking the data is a must. 
+
+After loading the data, we can see evaluation data has 40 observation and 12 variable, and training has 466 observation and 13 variable. The first question in my mind is how we handle the index. Should we keep the index? Will the index be the important element in between these 2 table? After careful consideration, we decided to keep the index under back up table in case we need it to joint both table although it said that do not use it. We will use mbtraining table for the rest of the project. Deleting not useful data is something people always forget or miss. It is helpful for audience to understand your data by taking away the useless data to create a nice and clean data set.
+
+
+```{r echo=FALSE}
+# load data
+
+crime_eval_df <- "https://raw.githubusercontent.com/jayleecunysps/sps621/main/crime-evaluation-data_modified.csv"
+crime_eval_df <-read.csv(crime_eval_df)
+
+crime_test_df <- "https://raw.githubusercontent.com/jayleecunysps/sps621/main/crime-training-data_modified.csv"
+crime_test_df <-read.csv(crime_test_df)
+
+
+```
+
+## Data Exploration
+
+After creating the table, we would like to explore the data to gain more knowledge on it as well as learn what limitation we can face in the later part of the project!
+First of all, I want to check what type the variables are. Sometimes wrong type of data crate issue, for example you do not want the money in type of character. You want it to be numeric or integer. If we do not check and explore it at first, it may delay the project timeline.
+For this project, I use **function str** to check the internal structure of the table/list, 
+
+
+```{r echo=FALSE}
+str(crime_test_df)
+```
+
+this function str is used for compactly displaying the internal structure of the table so we can learn about the object and its constituents. As we can see it is all integer which is good! However, we do see quite a few NA which will cause issue later.
+
+We can see the table is creating by type of num and int.
+
+We would like to understand the statistics behind of the data that we load to see if it is suitable to use for modeling. How do we do it? We are another R function called **summary**. It can show the mean, median and standard deviation.
+
+Also we would love to see the result of target column since it is where we can tell whether the crime rate is above the median crime rate (1) or not (0) (response variable).
+
+there is 229 which is 49% of observation is higher than median crime rate.
+
+```{r echo=FALSE}
+summary(crime_test_df)
+
+mean(crime_test_df$target)
+
+targetastext = as.character(crime_test_df$target)
+
+data_target <- as.data.frame(table(crime_test_df$target))
+data_target
+
+ggplot(data_target, aes(x = Var1, y = Freq, fill = Var1)) +  # Plot with values on top
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Freq), vjust = 0)
+
+
+```
+
+We can see the data has no NAs which is good and save a lot of steps for later. NAs can be problematic in data modeling. We usually prefer complete set of the data. 
+
+Lets visualize the standard deviation and spot the outliner at the same time by creating box plot.
+
+However, due to the variables range is huge, I create 2 box plot to show which y-axis limits is the best for presentation since we see that max of each variables is very different from summary that we look at early.
+
+you can see 2 plot which the ylim set as 500 and 100 in below.
+
+From the plot of ylim set as 1000, you can see only tax is clear to look at.
+
+Due to tax column is full-value property-tax rate per $10,000, so the value is higher than other variables.
+
+However, if we swtich the ylim to 100, tax boxpot will disappeer, and this is the reason why we create 2 plots.
+
+
+```{r echo=FALSE}
+
+
+ggplot(stack(crime_test_df), aes(x = ind, y = values)) + 
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 1000)) +
+   ggtitle("plot of ylim set as 1000") +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) 
+
+
+ggplot(stack(crime_test_df), aes(x = ind, y = values)) + 
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 100)) +
+   ggtitle("plot of ylim set as 100") +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) 
+
+```
+
+As we can see plot 1 show that there is a high value as well as high volume of outliner while plot 2 show the case the best.
+
+From the ylim testing, we can see that a fixed ylim may not work well when we have quite a few variables.
+
+
+```{r echo=FALSE}
+cor(drop_na(crime_test_df))
+pairs.panels(crime_test_df[1:6])
+pairs.panels(crime_test_df[6:12])
+```
+ 
+One thing catch my attention,correlations between tax and rad is 0.91 which is highly correlated.we may consider to delete one later.
+
+The next step we try to understanding if what rad and tax column means.
+ 
+rad: index of accessibility to radial highways (predictor variable)
+tax: full-value property-tax rate per $10,000 (predictor variable)
+ 
+It is logical to have highly correlated relation since it could mean that location is wealthy, so we decied to keep both column.
+ 
+up next we would like to see the density of the data.
+ 
+```{r echo=FALSE}
+
+potdata = melt(crime_test_df)
+
+ggplot(potdata, aes(x=value)) +
+  ggtitle("Checking density of the data") +
+  geom_density(fill='blue') + facet_wrap(~variable, scales ='free')
+
+```
+ We can see the instantaneous rate of the distribution of the numeric variable change. As we can see, we can find bimodal, normal and skewed distribution shapes. let me list out couple sample of each shape.
+ 
+ **Normal: rm**
+ 
+ **skewed: zn, chas, nox, age, dis, lstat** 
+ 
+ **bimodal: tax, target** 
+
+ 
+### Variable Visualizations
+We will use jitterplots because they account for overlap, which happen in basic plots.
+
+#### zn
+zn is the proportion of residential land zoned for large lots (> 25,000 sq.ft.).
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(zn), crime_test_df, xlab="zn", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### indus
+The proportion of non-retail business acres per suburb.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(indus), crime_test_df, xlab="indus", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### chas
+Does the suburb border the Charles river?
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(chas), crime_test_df, xlab="chas", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### nox
+nitrogren oxides concentration (parts per 10 million).
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(nox), crime_test_df, xlab="nox", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### rm 
+average number of rooms per dwelling.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(rm), crime_test_df, xlab="rm", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### age
+proportion of owner-occupied units built prior to 1940.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(age), crime_test_df, xlab="age", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### dis
+weighted mean of distances to five Boston employment centers.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(dis), crime_test_df, xlab="dis", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### rad
+index of accessibility to radial highways.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(rad), crime_test_df, xlab="rad", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### tax
+full-value property tax rate per $10,000.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(tax), crime_test_df, xlab="tax", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### ptratio
+pupil-teacher ratio by town.
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(ptratio), crime_test_df, xlab="ptratio", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+
+#### lstat
+lower status of the population (percentage)
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(lstat), crime_test_df, xlab="lstat", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+#### medv
+median value of owner-occupied homes in $1000s
+
+```{r}
+graphics::plot(jitter(target, .25) ~ jitter(medv), crime_test_df, xlab="medv", 
+            ylab="target (0 if below median crime rate, 1 if above median crime rate)", pch=".",col='red')
+```
+
+
+## Data Preparation
+
+First of all, we discuss if we show remove any fields, Although we found highly correlated, however, we think we should keep both fields since they actually have different meaning which may useful in the later part of our project. up next we usually need to replace NAs into mean, however, data do not have NAs.
+
+during last step, we found a lot of outlier under zn, then we think we should look into it to see if we need any action with it. 
+
+zn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable)
+
+However, we both think it is reasonable after looking at the description of zn.
+
+ 
+## Model Building
+
+I will use a logistical regression and probit regression and compare the results. I will work backwards with each, meaning that I will first include all of the variables and then remove them based on significance codes.
+
+### Logistical Model
+
+```{r}
+logit <- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = crime_test_df, family = "binomial")
+```
+
+
+
+```{r}
+summary(logit)
+```
+
+
+
+```{r}
+vif(logit)
+```
+
+
+
+By looking at the significance codes we can eliminate indus, chas, rm, and lstat.
+
+```{r}
+new_logit <- glm(target ~ zn + nox + age + dis + rad + tax + ptratio + medv, data = crime_test_df, family = "binomial")
+```
+
+
+
+```{r}
+vif(new_logit)
+```
+
+
+```{r}
+summary(new_logit)
+```
+
+
+### Probit Regression
+
+```{r}
+probit <- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = crime_test_df, family = "binomial"(link = "probit"))
+```
+
+
+```{r}
+vif(probit)
+```
+
+
+```{r}
+summary(probit)
+```
+By looking at the significance codes in the summary we can remove zn, indus, chas, rm, lstat.
+
+```{r}
+new_probit <- glm(target ~  nox + age + dis + rad + tax + ptratio + medv, data = crime_test_df, family = "binomial"(link = "probit"))
+summary(new_probit)
+```
+
+### Comparing the models
+
+#### McFadden's Psuedo R^2
+
+```{r}
+pR2(new_logit)
+```
+The logistical regression gave us a McFadden score of 0.69. This means is does a decent job at predicting the target variable.
+
+```{r}
+pR2(new_probit)
+```
+The probit regression returned a McFadden score slightly lower than the logisticall regression. Thus, the logistical regression model has stronger predictive power. We will chose that one to predict.
+
+## Forecasting
+
+Now we will use are model to predict if a neighborhood is above or below the median crime rate.
+
+```{r}
+probabilities <- new_logit %>% predict(crime_eval_df, type="response")
+predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+```
+
+```{r}
+crime_eval_df$predictions <- predicted.classes
+```
+
+```{r}
+crime_eval_df
+```
