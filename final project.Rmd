@@ -153,7 +153,7 @@ the t value of children and region is closest to zero, so we decide to elimit ch
 
 model equation is charges = -6424.80 + 332.97 * bmi + 241.93 * age
 ```{r}
-model3 <- lm(charges~bmi + age,
+model3 <- lm(charges~bmi + age +children,
             data = ins_df)
 summary(model3)
 
@@ -161,13 +161,27 @@ summary(model3)$coefficient
 ```
 
 ```{r}
+
+model3v2 <- lm(charges~bmi + age,
+            data = ins_df)
+summary(model3v2)
+
+summary(model3v2)$coefficient
+```
+
+
+```{r}
 model4 <- glm(charges ~.,family=gaussian(link='identity'),data=ins_df)
 
 summary(model4)
 ```
 
+
+
 ```{r}
-model5 <- glm(as.factor(charges)~., data=ins_df, family = "binomial")
+model5 <- glm(charges ~bmi + age ,family=gaussian(link='identity'),data=ins_df)
+
 summary(model5)
+```
 ```
 
